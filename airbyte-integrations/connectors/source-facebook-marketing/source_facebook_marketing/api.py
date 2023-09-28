@@ -87,7 +87,6 @@ class MyFacebookAdsApi(FacebookAdsApi):
             )
 
         if usage_header_business:
-
             usage_header_business_loaded = json.loads(usage_header_business)
             for business_object_id in usage_header_business_loaded:
                 usage_limits = usage_header_business_loaded.get(business_object_id)[0]
@@ -211,7 +210,7 @@ class API:
     def _find_account(account_id: str) -> AdAccount:
         """Actual implementation of find account"""
         try:
-            return AdAccount(f"act_{account_id}")
+            return AdAccount(f"act_{account_id}").api_get()
         except FacebookRequestError as exc:
             message = (
                 f"Error: {exc.api_error_code()}, {exc.api_error_message()}. "

@@ -11,7 +11,7 @@ import requests
 from airbyte_cdk.models import SyncMode
 from cached_property import cached_property
 from facebook_business.adobjects.abstractobject import AbstractObject
-from facebook_business.adobjects.adaccount import AdAccount
+from facebook_business.adobjects.adaccount import AdAccount as FBAdAccount
 from facebook_business.adobjects.adimage import AdImage
 from facebook_business.adobjects.user import User
 
@@ -31,8 +31,8 @@ def fetch_thumbnail_data_url(url: str) -> Optional[str]:
             return f"data:{_type};base64,{data.decode('ascii')}"
         else:
             logger.warning(f"Got {repr(response)} while requesting thumbnail image.")
-    except requests.exceptions.RequestException as exc:
-        logger.warning(f"Got {str(exc)} while requesting thumbnail image.")
+    except Exception as exc:
+        logger.warning(f"Got {str(exc)} while requesting thumbnail image: {url}.")
     return None
 
 
@@ -69,10 +69,10 @@ class AdCreatives(FBMarketingStream):
             yield record
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._list_objects(api_call_wrapper=AdCreatives.get_ad_creatives, params=params)
+        return self._list_objects(api_call_wrapper=AdCreatives.get_ad_creatives, params=params, fields=self.fields)
 
     @staticmethod
-    def get_ad_creatives(account: AdAccount, **kwargs):
+    def get_ad_creatives(account: FBAdAccount, **kwargs):
         return account.get_ad_creatives(**kwargs)
 
 
@@ -83,15 +83,15 @@ class CustomConversions(FBMarketingStream):
     enable_deleted = False
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._list_objects(api_call_wrapper=CustomConversions.get_custom_conversions, params=params)
+        return self._list_objects(api_call_wrapper=CustomConversions.get_custom_conversions, params=params, fields=self.fields)
 
     @staticmethod
-    def get_custom_conversions(account: AdAccount, **kwargs):
+    def get_custom_conversions(account: FBAdAccount, **kwargs):
         return account.get_custom_conversions(**kwargs)
 
 
 class CustomAudiences(FBMarketingStream):
-    """doc: https://developers.facebook.com/docs/marketing-api/reference/custom-conversion"""
+    """doc: https://developers.facebook.com/docs/marketing-api/reference/custom-audience"""
 
     entity_prefix = "customaudience"
     enable_deleted = False
@@ -100,7 +100,7 @@ class CustomAudiences(FBMarketingStream):
     fields_exceptions = ["rule"]
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_custom_audiences(params=params)
+        return self._api.account.get_custom_audiences(params=params, fields=self.fields)
 
 
 class Ads(FBMarketingIncrementalStream):
@@ -109,10 +109,10 @@ class Ads(FBMarketingIncrementalStream):
     entity_prefix = "ad"
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._list_objects(api_call_wrapper=Ads.get_ads, params=params)
+        return self._list_objects(api_call_wrapper=Ads.get_ads, params=params, fields=self.fields)
 
     @staticmethod
-    def get_ads(account: AdAccount, **kwargs):
+    def get_ads(account: FBAdAccount, **kwargs):
         return account.get_ads(**kwargs)
 
 
@@ -122,10 +122,10 @@ class AdRuleLibraries(FBMarketingIncrementalStream):
     entity_prefix = "ad_rule_libraries"
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._list_objects(api_call_wrapper=AdRuleLibraries.get_ad_rule_libraries, params=params)
+        return self._list_objects(api_call_wrapper=AdRuleLibraries.get_ad_rule_libraries, params=params, fields=self.fields)
 
     @staticmethod
-    def get_ad_rule_libraries(account: AdAccount, **kwargs):
+    def get_ad_rule_libraries(account: FBAdAccount, **kwargs):
         return account.get_ad_rules_library(**kwargs)
 
 
@@ -135,10 +135,10 @@ class AdSets(FBMarketingIncrementalStream):
     entity_prefix = "adset"
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._list_objects(api_call_wrapper=AdSets.get_ad_sets, params=params)
+        return self._list_objects(api_call_wrapper=AdSets.get_ad_sets, params=params, fields=self.fields)
 
     @staticmethod
-    def get_ad_sets(account: AdAccount, **kwargs):
+    def get_ad_sets(account: FBAdAccount, **kwargs):
         return account.get_ad_sets(**kwargs)
 
 
@@ -148,10 +148,10 @@ class Campaigns(FBMarketingIncrementalStream):
     entity_prefix = "campaign"
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._list_objects(api_call_wrapper=Campaigns.get_campaigns, params=params)
+        return self._list_objects(api_call_wrapper=Campaigns.get_campaigns, params=params, fields=self.fields)
 
     @staticmethod
-    def get_campaigns(account: AdAccount, **kwargs):
+    def get_campaigns(account: FBAdAccount, **kwargs):
         return account.get_campaigns(**kwargs)
 
 
@@ -166,34 +166,29 @@ class Activities(FBMarketingIncrementalStream):
         return self._list_objects(api_call_wrapper=Activities.get_activities, params=params, fields=fields)
 
     @staticmethod
-    def get_activities(account: AdAccount, **kwargs):
+    def get_activities(account: FBAdAccount, **kwargs):
         return account.get_activities(**kwargs)
 
-    def read_records(
-        self,
-        sync_mode: SyncMode,
-        cursor_field: List[str] = None,
-        stream_slice: Mapping[str, Any] = None,
-        stream_state: Mapping[str, Any] = None,
-    ) -> Iterable[Mapping[str, Any]]:
-        """Main read method used by CDK"""
-        loaded_records_iter = self.list_objects(fields=self.fields, params=self.request_params(stream_state=stream_state))
-
-        for record in loaded_records_iter:
-            if isinstance(record, AbstractObject):
-                yield record.export_all_data()  # convert FB object to dict
-            else:
-                yield record  # execute_in_batch will emmit dicts
 
     def _state_filter(self, stream_state: Mapping[str, Any]) -> Mapping[str, Any]:
         """Additional filters associated with state if any set"""
         state_value = stream_state.get(self.cursor_field)
-        since = self._start_date if not state_value else pendulum.parse(state_value)
+        if stream_state:
+            since = pendulum.parse(state_value)
+        elif self._start_date:
+            since = self._start_date
+        else:
+            # if start_date is not specified then do not use date filters
+            return {}
 
         potentially_new_records_in_the_past = self._include_deleted and not stream_state.get("include_deleted", False)
         if potentially_new_records_in_the_past:
             self.logger.info(f"Ignoring bookmark for {self.name} because of enabled `include_deleted` option")
-            since = self._start_date
+            if self._start_date:
+                since = self._start_date
+            else:
+                # if start_date is not specified then do not use date filters
+                return {}
 
         return {"since": since.int_timestamp}
 
@@ -207,7 +202,7 @@ class Videos(FBMarketingReversedIncrementalStream):
         return self._list_objects(api_call_wrapper=Videos.get_ad_videos, params=params, fields=self.fields)
 
     @staticmethod
-    def get_ad_videos(account: AdAccount, **kwargs):
+    def get_ad_videos(account: FBAdAccount, **kwargs):
         return account.get_ad_videos(**kwargs)
 
 
@@ -253,7 +248,7 @@ class Images(FBMarketingReversedIncrementalStream):
         return self._list_objects(api_call_wrapper=Images.get_ad_images, params=params, fields=self.fields)
 
     @staticmethod
-    def get_ad_images(account: AdAccount, **kwargs):
+    def get_ad_images(account: FBAdAccount, **kwargs):
         return account.get_ad_images(**kwargs)
 
     def get_record_deleted_status(self, record) -> bool:

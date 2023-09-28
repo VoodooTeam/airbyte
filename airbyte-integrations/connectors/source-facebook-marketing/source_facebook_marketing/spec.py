@@ -123,7 +123,7 @@ class ConnectorConfig(BaseConfig):
         order=1,
         description=(
             "The date from which you'd like to replicate data for all incremental streams, "
-            "in the format YYYY-MM-DDT00:00:00Z. All data generated after this date will be replicated."
+            "in the format YYYY-MM-DDT00:00:00Z. If not set then all data will be replicated for usual streams and only last 2 years for insight streams."
         ),
         pattern=DATE_TIME_PATTERN,
         examples=["2017-01-25T00:00:00Z"],
@@ -131,7 +131,7 @@ class ConnectorConfig(BaseConfig):
 
     end_date: Optional[datetime] = Field(
         title="End Date",
-        order=2,
+        order=3,
         description=(
             "The date until which you'd like to replicate data for all incremental streams, in the format YYYY-MM-DDT00:00:00Z."
             " All data generated between the start date and this end date will be replicated. "
@@ -201,18 +201,6 @@ class ConnectorConfig(BaseConfig):
         default=28,
     )
 
-    max_batch_size: Optional[int] = Field(
-        title="Maximum size of Batched Requests",
-        order=9,
-        description=(
-            "Maximum batch size used when sending batch requests to Facebook API. "
-            "Most users do not need to set this field unless they specifically need to tune the connector to address specific issues or use cases."
-        ),
-        default=50,
-        gt=0,
-        le=50,
-    )
-
     parallelism: Optional[PositiveInt] = Field(
         title="Maximum number of parallel connections",
         order=9,
@@ -223,7 +211,7 @@ class ConnectorConfig(BaseConfig):
         default=10,
     )
 
-    action_breakdowns_allow_empty: bool = Field(
+action_breakdowns_allow_empty: bool = Field(
         description="Allows action_breakdowns to be an empty list",
         default=True,
         airbyte_hidden=True,
