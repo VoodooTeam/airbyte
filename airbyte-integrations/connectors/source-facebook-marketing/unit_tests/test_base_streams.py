@@ -45,7 +45,7 @@ class TestBaseStream:
         )
 
         stream = SomeTestStream(source=source, api=api)
-        requests = [FacebookRequest("node", "GET", "endpoint") for _ in range(5)]
+        requests = [FacebookRequest("node", "xGET", "endpoint") for _ in range(5)]
 
         result = list(stream.execute_in_batch(requests))
 
@@ -63,7 +63,7 @@ class TestBaseStream:
             ]
         )
 
-        stream = SomeTestStream(api=api)
+        stream = SomeTestStream(api=api, source=source)
         requests = [FacebookRequest("node", "GET", "endpoint") for _ in range(50 + 1)]
 
         result = list(stream.execute_in_batch(requests))
@@ -72,7 +72,7 @@ class TestBaseStream:
         assert batch.execute.call_count == 2
         assert len(result) == 5 * 2
 
-    def test_execute_in_batch_with_retries(self, api, batch, mock_batch_responses):
+    def test_execute_in_batch_with_retries(self, api, source, batch, mock_batch_responses):
         """Should retry batch execution until succeed"""
         # batch.execute.side_effect = [batch, batch, None]
         mock_batch_responses(
@@ -98,7 +98,7 @@ class TestBaseStream:
             ]
         )
 
-        stream = SomeTestStream(api=api)
+        stream = SomeTestStream(api=api, source=source)
         requests = [FacebookRequest("node", "GET", "endpoint") for _ in range(3)]
 
         result = list(stream.execute_in_batch(requests))

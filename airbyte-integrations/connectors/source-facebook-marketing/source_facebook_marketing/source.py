@@ -143,7 +143,6 @@ class SourceFacebookMarketing(AbstractSource):
                 end_date=config.end_date,
                 include_deleted=config.include_deleted,
                 page_size=config.page_size,
-                max_batch_size=config.max_batch_size,
             ),
             AdRuleLibraries(source=self,
                             api=api,

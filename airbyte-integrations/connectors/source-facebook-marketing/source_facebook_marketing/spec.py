@@ -211,7 +211,7 @@ class ConnectorConfig(BaseConfig):
         default=10,
     )
 
-action_breakdowns_allow_empty: bool = Field(
+    action_breakdowns_allow_empty: bool = Field(
         description="Allows action_breakdowns to be an empty list",
         default=True,
         airbyte_hidden=True,

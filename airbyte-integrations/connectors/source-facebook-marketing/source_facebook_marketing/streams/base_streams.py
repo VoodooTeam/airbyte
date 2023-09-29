@@ -67,6 +67,7 @@ class FBMarketingStream(Stream, ABC):
         self._token_hash = api.token_hash
         self.page_size = page_size if page_size is not None else 100
         self._include_deleted = include_deleted if self.enable_deleted else False
+        self.max_batch_size = 50
 
     @cached_property
     def fields(self) -> List[str]:
@@ -116,7 +117,7 @@ class FBMarketingStream(Stream, ABC):
             batch_size += 1
 
         def success(response: FacebookResponse):
-            self.max_batch_size = self._initial_max_batch_size
+            self.max_batch_size = 50
             records.append(response.json())
 
         def reduce_batch_size(request: FacebookRequest):
@@ -136,7 +137,7 @@ class FBMarketingStream(Stream, ABC):
             resp_body = response.json()
             req_path = request._path
             logger.warning(f"Batch request to {req_path} failed (will be retried) with response: {resp_body}")
-            if not isinstance(resp_body, dict):
+            if not isinstance(resp_body, dict) or resp_body.get("error", {}).get("code") in IGNORED_ERRORS:
                 raise RuntimeError(f"Batch request to {req_path} failed (aborted) with response: {resp_body}")
             elif resp_body.get("error", {}).get("code") != FACEBOOK_BATCH_ERROR_CODE:
                 raise RuntimeError(f"Batch request to {req_path} failed (aborted) with response: {resp_body}, unknown error code")
@@ -196,13 +197,21 @@ class FBMarketingStream(Stream, ABC):
     ) -> Iterable[Mapping[str, Any]]:
         """Main read method used by CDK"""
         try:
-            for record in self.list_objects(params=self.request_params(stream_state=stream_state)):
+            records_iter = self.list_objects(params=self.request_params(stream_state=stream_state))
+            loaded_records_iter = (record.api_get(fields=self.fields, pending=self.use_batch) for record in records_iter)
+            if self.use_batch:
+                loaded_records_iter = self.execute_in_batch(loaded_records_iter)
+
+            for record in loaded_records_iter:
                 if isinstance(record, AbstractObject):
-                    record = record.export_all_data()  # convert FB object to dict
-                self.fix_date_time(record)
-                yield record
+                    yield record.export_all_data()  # convert FB object to dict
+                else:
+                    yield record  # execute_in_batch will emmit dicts
         except FacebookRequestError as exc:
             raise traced_exception(exc)
+
+
+
 
     @abstractmethod
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:

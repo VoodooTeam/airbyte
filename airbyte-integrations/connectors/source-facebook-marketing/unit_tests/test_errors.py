@@ -283,7 +283,7 @@ class TestRealErrors:
         requests_mock.register_uri("GET", f"{act_url}", [retryable_error_response, ad_account_response])
         requests_mock.register_uri("GET", f"{act_url}adcreatives", [retryable_error_response, ad_creative_response])
 
-        api = API(account_id=some_config["account_id"], access_token=some_config["access_token"], page_size=100)
+        api = API(account_ids=[some_config["account_id"]], access_token=some_config["access_token"], page_size=100)
         stream = AdCreatives(api=api, include_deleted=False)
         ad_creative_records = list(stream.read_records(sync_mode=SyncMode.full_refresh, stream_state={}))
 
@@ -296,7 +296,7 @@ class TestRealErrors:
     def test_config_error_during_account_info_read(self, requests_mock, name, friendly_msg, config_error_response):
         """Error raised during account info read"""
 
-        api = API(account_id=some_config["account_id"], access_token=some_config["access_token"], page_size=100)
+        api = API(account_ids=[some_config["account_id"]], access_token=some_config["access_token"], page_size=100)
         stream = AdCreatives(api=api, include_deleted=False)
 
         requests_mock.register_uri("GET", f"{act_url}", [config_error_response, ad_account_response])
@@ -313,7 +313,7 @@ class TestRealErrors:
     def test_config_error_during_actual_nodes_read(self, requests_mock, name, friendly_msg, config_error_response):
         """Error raised during actual nodes read"""
 
-        api = API(account_id=some_config["account_id"], access_token=some_config["access_token"], page_size=100)
+        api = API(account_ids=[some_config["account_id"]], access_token=some_config["access_token"], page_size=100)
         stream = AdCreatives(api=api, include_deleted=False)
 
         requests_mock.register_uri("GET", f"{act_url}", [ad_account_response])
@@ -330,7 +330,7 @@ class TestRealErrors:
     def test_config_error_insights_account_info_read(self, requests_mock, name, friendly_msg, config_error_response):
         """Error raised during actual nodes read"""
 
-        api = API(account_id=some_config["account_id"], access_token=some_config["access_token"], page_size=100)
+        api = API(account_ids=[some_config["account_id"]], access_token=some_config["access_token"], page_size=100)
         stream = AdsInsights(
             api=api,
             start_date=datetime(2010, 1, 1),
@@ -352,7 +352,7 @@ class TestRealErrors:
     def test_config_error_insights_during_actual_nodes_read(self, requests_mock, name, friendly_msg, config_error_response):
         """Error raised during actual nodes read"""
 
-        api = API(account_id=some_config["account_id"], access_token=some_config["access_token"], page_size=100)
+        api = API(account_ids=[some_config["account_id"]], access_token=some_config["access_token"], page_size=100)
         stream = AdsInsights(
             api=api,
             start_date=datetime(2010, 1, 1),

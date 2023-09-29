@@ -124,11 +124,12 @@ class TestBackoff:
         # Note for multi accounts: this test is kind of dumb as there's a lot of async involved and we mock batch response
         # data so everything else is useless. But it's usefull for debugging and yo CAN see that the elements in "response"
         # are sent twice to check the batch resonse stuff, so it does use 2 accounts
-        assert records == [{"name": "creative 1"}, {"name": "creative 2"}, {"name": "creative 1"}, {"name": "creative 2"}]
-        # assert records == [
-        #     {"id": "123", "object_type": "SHARE", "status": "ACTIVE"},
-        #     {"id": "1234", "object_type": "SHARE", "status": "ACTIVE"},
-        # ]
+        assert records == [
+            {"id": "123", "object_type": "SHARE", "status": "ACTIVE"},
+            {"id": "1234", "object_type": "SHARE", "status": "ACTIVE"},
+            {"id": "123", "object_type": "SHARE", "status": "ACTIVE"},
+            {"id": "1234", "object_type": "SHARE", "status": "ACTIVE"},
+        ]
 
     @pytest.mark.parametrize(
         "error_response",
@@ -235,7 +236,7 @@ class TestBackoff:
             assert [x.qs.get("limit")[0] for x in res.request_history] == ['100', '50', '100', '50']
             assert [x.qs.get("limit")[0] for x in res2.request_history] == ['100', '50', '100', '50']
 
-    def test_start_date_not_provided(self, requests_mock, api, account_id):
+    def test_start_date_not_provided(self, requests_mock, api, source, account_id):
         success = {
                 "json": {
                     "data": [],
@@ -255,7 +256,7 @@ class TestBackoff:
             [success],
             )
 
-        stream = Activities(api=api, start_date=None, end_date=None, include_deleted=False, page_size=100)
+        stream = Activities(api=api, source=source, start_date=None, end_date=None, include_deleted=False, page_size=100)
         list(stream.read_records(sync_mode=SyncMode.full_refresh, stream_state={}))
 
     def test_limit_error_retry_next_page(self, source, fb_call_amount_data_response, requests_mock, api, account_id, second_account_id):
