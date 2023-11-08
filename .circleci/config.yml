@@ -27,13 +27,20 @@ jobs:
       image: ubuntu-2004:202201-02
     steps:
       - checkout
+
   dependencies_googleads:
-    working_directory: ~/airbyte/airbyte-integrations/connectors/source-tiktok-google-ads
+    working_directory: ~/airbyte/airbyte-integrations/connectors/source-google-ads
     machine:
       image: ubuntu-2004:202201-02
     steps:
       - checkout
 
+  dependencies_ironsource:
+    working_directory: ~/airbyte/airbyte-integrations/connectors/source-ironsource
+    machine:
+      image: ubuntu-2004:202201-02
+    steps:
+      - checkout
 
 workflows:
   version: 2
@@ -55,6 +62,11 @@ workflows:
             - VOODOO_INFRA_TOOLS
 
       - dependencies_googleads:
+          context:
+            - github-voodoo-bender
+            - VOODOO_INFRA_TOOLS
+
+      - dependencies_ironsource:
           context:
             - github-voodoo-bender
             - VOODOO_INFRA_TOOLS
@@ -131,3 +143,20 @@ workflows:
               only:
                 - voodoo_master
 
+      - aws-ecr/build-and-push-image:
+          path: airbyte-integrations/connectors/source-ironsource/
+          executor:
+            name: aws-ecr/default
+            use-docker-layer-caching: true
+          context: VOODOO_INFRA_TOOLS
+          create-repo: false
+          no-output-timeout: 20m
+          repo: "data-core/vgp-data-airbyte-ironsource"
+          tag: << pipeline.git.revision >>
+          skip-when-tags-exist: true
+          requires:
+            - dependencies_ironsource
+          filters:
+            branches:
+              only:
+                - voodoo_master
