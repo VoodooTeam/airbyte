@@ -53,9 +53,6 @@
     "card_id": {
       "type": ["null", "integer"]
     },
-    "primary_status": {
-      "type": "string"
-    },
     "secondary_status": {
       "type": "string"
     },
