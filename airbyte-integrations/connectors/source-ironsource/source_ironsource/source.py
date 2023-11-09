@@ -34,8 +34,7 @@ class SourceIronsource(AbstractSource):
         access_token = self.get_access_token(config)
 
         if access_token:
-            auth = BearerAuthenticator(TokenAuthenticator(token=access_token)).get_auth_header()
-            print(auth)
+            auth = TokenAuthenticator(token=access_token).get_auth_header()
 
             try:
                 response = requests.get(f"https://api.ironsrc.com/advertisers/v2/creatives", headers=auth)
@@ -46,6 +45,7 @@ class SourceIronsource(AbstractSource):
         return False, "Token not found"
 
     def streams(self, config: Mapping[str, Any]) -> List[Stream]:
+        print(self.check_connection(None, config))
         access_token = self.get_access_token(config)
         auth = TokenAuthenticator(token=access_token)
 
