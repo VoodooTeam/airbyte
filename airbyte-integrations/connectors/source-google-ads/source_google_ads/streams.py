@@ -13,6 +13,7 @@ from airbyte_cdk.utils import AirbyteTracedException
 from airbyte_protocol.models import FailureType
 from google.ads.googleads.errors import GoogleAdsException
 from google.ads.googleads.v11.services.services.google_ads_service.pagers import SearchPager
+from grpc import StatusCode
 
 from .google_ads import GoogleAds
 from .models import Customer
@@ -117,7 +118,10 @@ class GoogleAdsStream(Stream, ABC):
             for response in response_records:
                 yield from self.parse_response(response, stream_slice)
         except GoogleAdsException as exception:
-            traced_exception(exception, customer_id, self.CATCH_CUSTOMER_NOT_ENABLED_ERROR)
+            if exception.error.args[0].code == StatusCode.PERMISSION_DENIED:
+                logger.warning(f"GOOGLE ADS EXCEPTION: customer {customer_id} is not activated or is disabled")
+            else:
+                traced_exception(exception, customer_id, self.CATCH_CUSTOMER_NOT_ENABLED_ERROR)
 
 
 class IncrementalGoogleAdsStream(GoogleAdsStream, IncrementalMixin, ABC):
