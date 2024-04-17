@@ -64,7 +64,7 @@ class FBMarketingStream(Stream, ABC):
         """List of fields that we want to query, for now just all properties from stream's schema"""
         if self._fields:
             return self._fields
-        self._saved_fields = list(self.get_json_schema().get("properties", {}).keys())
+        self._saved_fields = list([f for f in self.get_json_schema().get("properties", {}).keys() if (f not in self.fields_exceptions)])
         return self._saved_fields
 
     @classmethod
@@ -184,7 +184,7 @@ class FBMarketingStream(Stream, ABC):
         try:
             for record in self.list_objects(
                 params=self.request_params(stream_state=account_state),
-                account_id=account_id,
+                account_id=account_id
             ):
                 if isinstance(record, AbstractObject):
                     record = record.export_all_data()  # convert FB object to dict
