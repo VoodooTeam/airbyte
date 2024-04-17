@@ -6,13 +6,15 @@ RUN apt-get update && apt-get install -y bash && apt-get install -y socat && rm 
 
 WORKDIR /airbyte/integration_code
 COPY source_facebook_marketing ./source_facebook_marketing
-COPY main.py ./
-COPY setup.py ./
-RUN pip install .
+COPY main.py /airbyte/integration_code/main.py
+COPY poetry.lock /airbyte/integration_code/poetry.lock
+COPY pyproject.toml /airbyte/integration_code/pyproject.toml
+
+RUN pip install poetry
+RUN poetry install
 
 ENV AIRBYTE_ENTRYPOINT "python /airbyte/integration_code/main.py"
 ENTRYPOINT ["python", "/airbyte/integration_code/main.py"]
-
 
 LABEL io.airbyte.version=1.1.16
 LABEL io.airbyte.name=airbyte/source-facebook-marketing
