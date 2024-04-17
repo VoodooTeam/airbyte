@@ -46,6 +46,7 @@ from source_facebook_marketing.streams import (
     AdsInsightsDma,
     AdsInsightsPlatformAndDevice,
     AdsInsightsRegion,
+    AdRuleLibraries,
     Campaigns,
     CustomAudiences,
     CustomConversions,
@@ -186,6 +187,14 @@ class SourceFacebookMarketing(AbstractSource):
             AdsInsightsDemographicsCountry(page_size=config.page_size, **insights_args),
             AdsInsightsDemographicsDMARegion(page_size=config.page_size, **insights_args),
             AdsInsightsDemographicsGender(page_size=config.page_size, **insights_args),
+            AdRuleLibraries(
+                api=api,
+                account_ids=config.account_ids,
+                start_date=config.start_date,
+                end_date=config.end_date,
+                filter_statuses=config.adset_statuses,
+                page_size=config.page_size,
+            ),
             Campaigns(
                 api=api,
                 account_ids=config.account_ids,

@@ -105,6 +105,13 @@ class Ads(FBMarketingIncrementalStream):
     def list_objects(self, params: Mapping[str, Any], account_id: str) -> Iterable:
         return self._api.get_account(account_id=account_id).get_ads(params=params, fields=self.fields())
 
+class AdRuleLibraries(FBMarketingIncrementalStream):
+    """doc: https://developers.facebook.com/docs/marketing-api/reference/ad-rule-libraries"""
+
+    entity_prefix = "ad_rule_libraries"
+
+    def list_objects(self, params: Mapping[str, Any], account_id: str) -> Iterable:
+        return self._api.get_account(account_id=account_id).get_ad_rules_library(params=params, fields=self.fields())
 
 class AdSets(FBMarketingIncrementalStream):
     """doc: https://developers.facebook.com/docs/marketing-api/reference/ad-campaign"""
@@ -193,6 +200,26 @@ class AdAccount(FBMarketingStream):
     """See: https://developers.facebook.com/docs/marketing-api/reference/ad-account"""
 
     use_batch = False
+
+    #TODO: VERSION BUMP
+    # fields_exceptions = [
+    #     "business",
+    #     "business_street",
+    #     "business_street2",
+    #     "capabilities",
+    #     "failed_delivery_checks",
+    #     "has_migrated_permissions",
+    #     "extended_credit_invoice_group",
+    #     "failed_delivery_checks",
+    #     "funding_source",
+    #     "funding_source_details",
+    #     "offsite_pixels_tos_accepted",
+    #     "owner",
+    #     "tos_accepted",
+    #     "user_tasks",
+    #     "user_tos_accepted",
+    # ]
+
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

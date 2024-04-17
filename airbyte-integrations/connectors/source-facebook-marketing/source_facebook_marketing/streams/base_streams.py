@@ -56,6 +56,10 @@ class FBMarketingStream(Stream, ABC):
         self._filter_statuses = filter_statuses
         self._fields = None
 
+    @property
+    def state_checkpoint_interval(self) -> Optional[int]:
+        return 500
+
     def fields(self, **kwargs) -> List[str]:
         """List of fields that we want to query, for now just all properties from stream's schema"""
         if self._fields:
@@ -129,22 +133,24 @@ class FBMarketingStream(Stream, ABC):
         :return: The transformed state dictionary.
         """
 
-        # If the state already contains any of the account IDs, return the state as is.
-        for account_id in self._account_ids:
-            if account_id in state:
-                return state
+        if state:
+            # If the state already contains any of the account IDs, return the state as is.
+            for account_id in self._account_ids:
+                if account_id in state:
+                    return state
 
-        # Handle the case where there is only one account ID.
-        # Transform the state by nesting it under the account ID.
-        if state and len(self._account_ids) == 1:
-            account_id = self._account_ids[0]
-            new_state = {account_id: state}
+            # Transform old state into new
+            new_state = {}
+            for account_id in self._account_ids:
+                new_account_state = {account_id: state}
 
-            # Move specified fields to the top level of the new state.
-            if move_fields:
-                for move_field in move_fields:
-                    if move_field in state:
-                        new_state[move_field] = state.pop(move_field)
+                # Move specified fields to the top level of the new state.
+                if move_fields:
+                    for move_field in move_fields:
+                        if move_field in state:
+                            new_account_state[move_field] = state[move_field]
+
+                new_state.update(new_account_state)
 
             return new_state
 
@@ -214,6 +220,30 @@ class FBMarketingStream(Stream, ABC):
 
     def _filter_all_statuses(self) -> MutableMapping[str, Any]:
         """Filter records by statuses"""
+
+        #TODO: VERSION BUMP
+        # filt_values = [
+        #     "active",
+        #     "archived",
+        #     "completed",
+        #     "limited",
+        #     "not_delivering",
+        #     "deleted",
+        #     "not_published",
+        #     "pending_review",
+        #     "permanently_deleted",
+        #     "recently_completed",
+        #     "recently_rejected",
+        #     "rejected",
+        #     "scheduled",
+        #     "inactive",
+        # ]
+        #
+        # return {
+        #     "filtering": [
+        #         {"field": f"{self.entity_prefix}.delivery_info", "operator": "IN", "value":  filt_values},
+        #     ],
+        # }
 
         return (
             {
