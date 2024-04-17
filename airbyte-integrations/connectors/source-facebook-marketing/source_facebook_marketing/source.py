@@ -22,7 +22,7 @@ from source_facebook_marketing.api import API
 from source_facebook_marketing.spec import ConnectorConfig
 from source_facebook_marketing.streams import (
     Activities,
-    AdAccount,
+    AdAccounts,
     AdCreatives,
     Ads,
     AdSets,
@@ -144,7 +144,7 @@ class SourceFacebookMarketing(AbstractSource):
             insights_job_timeout=config.insights_job_timeout,
         )
         streams = [
-            AdAccount(api=api, account_ids=config.account_ids),
+            AdAccounts(api=api, account_ids=config.account_ids),
             AdSets(
                 api=api,
                 account_ids=config.account_ids,

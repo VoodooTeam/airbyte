@@ -221,43 +221,29 @@ class FBMarketingStream(Stream, ABC):
     def _filter_all_statuses(self) -> MutableMapping[str, Any]:
         """Filter records by statuses"""
 
-        #TODO: VERSION BUMP
-        # filt_values = [
-        #     "active",
-        #     "archived",
-        #     "completed",
-        #     "limited",
-        #     "not_delivering",
-        #     "deleted",
-        #     "not_published",
-        #     "pending_review",
-        #     "permanently_deleted",
-        #     "recently_completed",
-        #     "recently_rejected",
-        #     "rejected",
-        #     "scheduled",
-        #     "inactive",
-        # ]
-        #
-        # return {
-        #     "filtering": [
-        #         {"field": f"{self.entity_prefix}.delivery_info", "operator": "IN", "value":  filt_values},
-        #     ],
-        # }
+        filt_values = [
+            "active",
+            "archived",
+            "completed",
+            "limited",
+            "not_delivering",
+            "deleted",
+            "not_published",
+            "pending_review",
+            "permanently_deleted",
+            "recently_completed",
+            "recently_rejected",
+            "rejected",
+            "scheduled",
+            "inactive",
+        ]
 
-        return (
-            {
-                "filtering": [
-                    {
-                        "field": f"{self.entity_prefix}.{self.status_field}",
-                        "operator": "IN",
-                        "value": self._filter_statuses,
-                    },
-                ],
-            }
-            if self._filter_statuses and self.status_field
-            else {}
-        )
+        return {
+            "filtering": [
+                {"field": f"{self.entity_prefix}.delivery_info", "operator": "IN", "value":  filt_values},
+            ],
+        }
+
 
 
 class FBMarketingIncrementalStream(FBMarketingStream, ABC):

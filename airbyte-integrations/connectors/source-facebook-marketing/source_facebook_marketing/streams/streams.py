@@ -196,7 +196,7 @@ class Videos(FBMarketingReversedIncrementalStream):
         return self._api.get_account(account_id=account_id).get_ad_videos(params=params, fields=self.fields())
 
 
-class AdAccount(FBMarketingStream):
+class AdAccounts(FBMarketingStream):
     """See: https://developers.facebook.com/docs/marketing-api/reference/ad-account"""
 
     use_batch = False
