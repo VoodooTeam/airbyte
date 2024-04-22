@@ -5,11 +5,9 @@
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from multiprocessing.pool import ThreadPool
 from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, MutableMapping, Optional, Set
 
 import pendulum
-from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.models import SyncMode
 from airbyte_cdk.sources.streams.availability_strategy import AvailabilityStrategy
 from airbyte_cdk.sources.utils.transform import TransformConfig, TypeTransformer
