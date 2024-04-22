@@ -19,6 +19,7 @@ from .streams import (
     AccountPerformanceReport,
     AdGroup,
     AdGroupAd,
+    AdGroupAdAssetView,
     AdGroupAdLabel,
     AdGroupAdLegacy,
     AdGroupBiddingStrategy,
@@ -46,6 +47,8 @@ from .streams import (
     UserLocationView,
 )
 from .utils import GAQL, logger, traced_exception
+
+logger = logging.getLogger("airbyte")
 
 
 class SourceGoogleAds(AbstractSource):
@@ -187,8 +190,8 @@ class SourceGoogleAds(AbstractSource):
         logger.info(f"Found {len(customers)} customers: {[customer.id for customer in customers]}")
 
         # Check custom query request validity by sending metric request with non-existent time window
-        for query in config.get("custom_queries_array", []):
-            for customer in customers:
+        for customer in customers:
+            for query in config.get("custom_queries_array", []):
                 table_name = query["table_name"]
                 query = query["query"]
                 if customer.is_manager_account and self.is_metrics_in_custom_query(query):
@@ -215,7 +218,6 @@ class SourceGoogleAds(AbstractSource):
                 # iterate over the response otherwise exceptions will not be raised!
                 for _ in response:
                     pass
-                break
         return True, None
 
     def streams(self, config: Mapping[str, Any]) -> List[Stream]:
@@ -230,8 +232,9 @@ class SourceGoogleAds(AbstractSource):
         incremental_config = self.get_incremental_stream_config(google_api, config, customers)
         non_manager_incremental_config = self.get_incremental_stream_config(google_api, config, non_manager_accounts)
         streams = [
-            AdGroup(**incremental_config),
-            AdGroupAd(**incremental_config),
+            AdGroup(**default_config),
+            AdGroupAd(**default_config),
+            AdGroupAdAssetView(**incremental_config),
             AdGroupAdLabel(**default_config),
             AdGroupBiddingStrategy(**incremental_config),
             AdGroupCriterion(**default_config),
@@ -243,7 +246,7 @@ class SourceGoogleAds(AbstractSource):
             CampaignCriterion(**default_config),
             CampaignLabel(google_api, customers=customers),
             ClickView(**incremental_config),
-            Customer(**incremental_config),
+            Customer(**default_config),
             CustomerLabel(**default_config),
             Label(**default_config),
             UserInterest(**default_config),
@@ -252,8 +255,8 @@ class SourceGoogleAds(AbstractSource):
         if non_manager_accounts:
             streams.extend(
                 [
-                    Campaign(**non_manager_incremental_config),
-                    CampaignBudget(**non_manager_incremental_config),
+                    Campaign(**default_config),
+                    CampaignBudget(**default_config),
                     UserLocationView(**non_manager_incremental_config),
                     AccountPerformanceReport(**non_manager_incremental_config),
                     TopicView(**non_manager_incremental_config),
