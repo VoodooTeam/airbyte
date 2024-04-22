@@ -5,16 +5,18 @@
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, MutableMapping, Optional
+from multiprocessing.pool import ThreadPool
+from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, MutableMapping, Optional, Set
 
 import pendulum
-from airbyte_cdk.models import SyncMode
 from airbyte_cdk.sources.streams import Stream
+from airbyte_cdk.models import SyncMode
 from airbyte_cdk.sources.streams.availability_strategy import AvailabilityStrategy
 from airbyte_cdk.sources.utils.transform import TransformConfig, TypeTransformer
 from facebook_business.adobjects.abstractobject import AbstractObject
 from facebook_business.exceptions import FacebookRequestError
 from source_facebook_marketing.streams.common import traced_exception
+from .async_stream import AsyncStream
 
 from .common import deep_merge
 
@@ -24,7 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("airbyte")
 
 
-class FBMarketingStream(Stream, ABC):
+class FBMarketingStream(AsyncStream, ABC):
     """Base stream class"""
 
     primary_key = "id"
@@ -44,16 +46,17 @@ class FBMarketingStream(Stream, ABC):
     def __init__(
         self,
         api: "API",
-        account_ids: List[str],
-        filter_statuses: list = [],
+        account_ids: Set[str],
+        filter_statuses: list = None,
         page_size: int = 100,
+        parallelism: int = 1,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(max_workers=parallelism, **kwargs)
         self._api = api
         self._account_ids = account_ids
         self.page_size = page_size if page_size is not None else 100
-        self._filter_statuses = filter_statuses
+        self._filter_statuses = filter_statuses or []
         self._fields = None
 
     @property
@@ -204,9 +207,10 @@ class FBMarketingStream(Stream, ABC):
             yield {"account_id": account_id, "stream_state": account_state}
 
     @abstractmethod
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
+    def list_objects(self, params: Mapping[str, Any], account_id: str) -> Iterable:
         """List FB objects, these objects will be loaded in read_records later with their details.
 
+        :param account_id: the account id
         :param params: params to make request
         :return: list of FB objects to load
         """
@@ -243,7 +247,6 @@ class FBMarketingStream(Stream, ABC):
                 {"field": f"{self.entity_prefix}.delivery_info", "operator": "IN", "value":  filt_values},
             ],
         }
-
 
 
 class FBMarketingIncrementalStream(FBMarketingStream, ABC):
