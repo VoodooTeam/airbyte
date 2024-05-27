@@ -7,6 +7,7 @@ from typing import Any, List, Mapping, Optional, Tuple, Type
 
 import facebook_business
 import pendulum
+import requests
 from airbyte_cdk.models import (
     AdvancedAuth,
     AuthFlowType,
@@ -71,7 +72,7 @@ class SourceFacebookMarketing(AbstractSource):
         if config.get("end_date") == "":
             config.pop("end_date")
 
-        config = ConnectorConfig.parse_obj(config)
+        config: ConnectorConfig = ConnectorConfig.parse_obj(config)
 
         if config.start_date:
             config.start_date = pendulum.instance(config.start_date)
@@ -80,6 +81,23 @@ class SourceFacebookMarketing(AbstractSource):
             config.end_date = pendulum.instance(config.end_date)
 
         config.account_ids = list(config.account_ids)
+        if config.account_id_lookup:
+            lookup = config.account_id_lookup
+            res = (
+                requests
+                .request(
+                    method=lookup.method,
+                    url=lookup.url,
+                    headers={
+                        "Authorization":  f"Bearer {lookup.bearer_token}",
+                        "Content-Type": "application/json",
+                        **lookup.headers
+                    },
+                    data=lookup.payload,
+                )
+            )
+            res.raise_for_status()
+            config.account_ids = list(set(res.json()["items"]))
 
         return config
 
@@ -149,9 +167,11 @@ class SourceFacebookMarketing(AbstractSource):
             parallelism=config.parallelism
         )
         streams = [
-            AdAccounts(api=api,
-                       account_ids=config.account_ids,
-                       parallelism=config.parallelism),
+            AdAccounts(
+                api=api,
+                account_ids=config.account_ids,
+                parallelism=config.parallelism
+            ),
             AdSets(
                 api=api,
                 account_ids=config.account_ids,

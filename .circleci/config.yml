@@ -124,6 +124,9 @@ workflows:
             branches:
               only:
                 - voodoo_master
+            tags:
+              only:
+                - /^dev.*$/
 
       - aws-ecr/build-and-push-image:
           path: airbyte-integrations/connectors/source-applovin/

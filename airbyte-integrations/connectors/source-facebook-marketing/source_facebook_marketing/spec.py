@@ -12,7 +12,7 @@ from facebook_business.adobjects.ad import Ad
 from facebook_business.adobjects.adset import AdSet
 from facebook_business.adobjects.adsinsights import AdsInsights
 from facebook_business.adobjects.campaign import Campaign
-from pydantic import BaseModel, Field, PositiveInt, constr
+from pydantic import BaseModel, Field, PositiveInt, constr, validator
 
 logger = logging.getLogger("airbyte")
 
@@ -25,6 +25,16 @@ ValidAdSetStatuses = Enum("ValidAdSetStatuses", AdSet.EffectiveStatus.__dict__)
 ValidAdStatuses = Enum("ValidAdStatuses", Ad.EffectiveStatus.__dict__)
 DATE_TIME_PATTERN = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
 EMPTY_PATTERN = "^$"
+
+
+class LookupConfig(BaseModel):
+    url: str = Field()
+    method: str = Field()
+    bearer_token: str = Field(
+        airbyte_secret=True,
+    )
+    headers: dict = Field(default_factory=dict)
+    payload: dict = Field(default_factory=dict)
 
 
 class InsightConfig(BaseModel):
@@ -120,11 +130,21 @@ class InsightConfig(BaseModel):
 class ConnectorConfig(BaseConfig):
     """Connector config"""
 
+    @validator("account_ids", always=True)
+    def exactly_one_accounts_source(cls, v, values):
+        is_static = v is not None
+        is_dynamic = values["account_id_lookup"] is not None
+        if is_static and is_dynamic:
+            raise ValueError("Only one of Ad Account ID(s) or Account IDs lookup config can be set")
+        if not is_static and not is_dynamic:
+            raise ValueError("Ad Account ID(s) or Account IDs lookup config must be set")
+        return v
+
     class Config:
         title = "Source Facebook Marketing"
         use_enum_values = True
 
-    account_ids: Set[constr(regex="^[0-9]+$")] = Field(
+    account_ids: Optional[Set[constr(regex="^[0-9]+$")]] = Field(
         title="Ad Account ID(s)",
         order=0,
         description=(
@@ -138,9 +158,17 @@ class ConnectorConfig(BaseConfig):
         min_items=0,
     )
 
+    account_id_lookup: Optional[LookupConfig] = Field(
+        title="Account IDs lookup config",
+        order=1,
+        description=(
+            "Endpoint to query for the list of Ad Account IDs."
+        )
+    )
+
     access_token: str = Field(
         title="Access Token",
-        order=1,
+        order=2,
         description=(
             "The value of the generated access token. "
             'From your App’s Dashboard, click on "Marketing API" then "Tools". '
@@ -152,7 +180,7 @@ class ConnectorConfig(BaseConfig):
 
     start_date: Optional[datetime] = Field(
         title="Start Date",
-        order=2,
+        order=3,
         description=(
             "The date from which you'd like to replicate data for all incremental streams, "
             "in the format YYYY-MM-DDT00:00:00Z. If not set then all data will be replicated for usual streams and only last 2 years for insight streams."
@@ -163,7 +191,7 @@ class ConnectorConfig(BaseConfig):
 
     end_date: Optional[datetime] = Field(
         title="End Date",
-        order=3,
+        order=4,
         description=(
             "The date until which you'd like to replicate data for all incremental streams, in the format YYYY-MM-DDT00:00:00Z."
             " All data generated between the start date and this end date will be replicated. "
@@ -176,35 +204,35 @@ class ConnectorConfig(BaseConfig):
 
     campaign_statuses: Optional[List[ValidCampaignStatuses]] = Field(
         title="Campaign Statuses",
-        order=4,
+        order=5,
         description="Select the statuses you want to be loaded in the stream. If no specific statuses are selected, the API's default behavior applies, and some statuses may be filtered out.",
         default=[],
     )
 
     adset_statuses: Optional[List[ValidAdSetStatuses]] = Field(
         title="AdSet Statuses",
-        order=5,
+        order=6,
         description="Select the statuses you want to be loaded in the stream. If no specific statuses are selected, the API's default behavior applies, and some statuses may be filtered out.",
         default=[],
     )
 
     ad_statuses: Optional[List[ValidAdStatuses]] = Field(
         title="Ad Statuses",
-        order=6,
+        order=7,
         description="Select the statuses you want to be loaded in the stream. If no specific statuses are selected, the API's default behavior applies, and some statuses may be filtered out.",
         default=[],
     )
 
     fetch_thumbnail_images: bool = Field(
         title="Fetch Thumbnail Images from Ad Creative",
-        order=7,
+        order=8,
         default=False,
         description="Set to active if you want to fetch the thumbnail_url and store the result in thumbnail_data_url for each Ad Creative.",
     )
 
     custom_insights: Optional[List[InsightConfig]] = Field(
         title="Custom Insights",
-        order=8,
+        order=9,
         description=(
             "A list which contains ad statistics entries, each entry must have a name and can contains fields, "
             'breakdowns or action_breakdowns. Click on "add" to fill this field.'
