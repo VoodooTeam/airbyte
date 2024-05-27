@@ -28,13 +28,31 @@ EMPTY_PATTERN = "^$"
 
 
 class LookupConfig(BaseModel):
-    url: str = Field()
-    method: str = Field()
+    url: str = Field(
+        title="Endoint URL",
+        description="The URL to fetch the list",
+    )
+    method: str = Field(
+        title="HTTP method to use",
+        description="e.g. GET, POST, PUT, DELETE, HEAD, OPTIONS, TRACE",
+    )
     bearer_token: str = Field(
+        title="Bearer token",
+        description="Token to authenticate against the API",
         airbyte_secret=True,
     )
-    headers: dict = Field(default_factory=dict)
-    payload: dict = Field(default_factory=dict)
+    headers: dict = Field(
+        title="Additional HTTP headers",
+        default_factory=dict
+    )
+    payload: dict = Field(
+        title="HTTP payload",
+        default_factory=dict,
+    )
+    path: str = Field(
+        title="Path",
+        description="Path to extract the relevant list from the response JSON",
+    )
 
 
 class InsightConfig(BaseModel):
