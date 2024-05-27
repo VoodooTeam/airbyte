@@ -28,6 +28,10 @@ EMPTY_PATTERN = "^$"
 
 
 class LookupConfig(BaseModel):
+
+    class Config:
+        use_enum_values = True
+
     url: str = Field(
         title="Endoint URL",
         description="The URL to fetch the list",
@@ -41,11 +45,11 @@ class LookupConfig(BaseModel):
         description="Token to authenticate against the API",
         airbyte_secret=True,
     )
-    headers: dict = Field(
+    headers: dict[str, str] = Field(
         title="Additional HTTP headers",
         default_factory=dict
     )
-    payload: dict = Field(
+    payload: dict[str, str] = Field(
         title="HTTP payload",
         default_factory=dict,
     )
