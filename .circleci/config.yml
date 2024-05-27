@@ -71,6 +71,10 @@ workflows:
           context:
             - github-voodoo-bender
             - VOODOO_INFRA_TOOLS
+          filters:
+            tags:
+              only:
+                - /^dev.*$/
 
       - dependencies_applovin:
           context:
