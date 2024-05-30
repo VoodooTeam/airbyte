@@ -12,7 +12,7 @@ from facebook_business.adobjects.ad import Ad
 from facebook_business.adobjects.adset import AdSet
 from facebook_business.adobjects.adsinsights import AdsInsights
 from facebook_business.adobjects.campaign import Campaign
-from pydantic import BaseModel, Field, PositiveInt, constr, validator, Extra
+from pydantic import BaseModel, Field, PositiveInt, constr, root_validator, Extra
 
 logger = logging.getLogger("airbyte")
 
@@ -159,21 +159,21 @@ class InsightConfig(BaseModel):
 class ConnectorConfig(BaseConfig):
     """Connector config"""
 
-    @validator("account_ids", always=True)
-    def exactly_one_accounts_source(cls, v, values):
-        is_static = v is not None
+    @root_validator
+    def exactly_one_accounts_source(cls, values):
+        is_static = len(values["account_ids"]) > 0
         is_dynamic = values["account_id_lookup"] is not None
         if is_static and is_dynamic:
             raise ValueError("Only one of Ad Account ID(s) or Account IDs lookup config can be set")
         if not is_static and not is_dynamic:
             raise ValueError("Ad Account ID(s) or Account IDs lookup config must be set")
-        return v
+        return values
 
     class Config:
         title = "Source Facebook Marketing"
         use_enum_values = True
 
-    account_ids: Optional[Set[constr(regex="^[0-9]+$")]] = Field(
+    account_ids: Set[constr(regex="^[0-9]+$")] = Field(
         title="Ad Account ID(s)",
         order=0,
         description=(
@@ -182,9 +182,10 @@ class ConnectorConfig(BaseConfig):
             'bar of your <a href="https://adsmanager.facebook.com/adsmanager/">Meta Ads Manager</a>. '
             'See the <a href="https://www.facebook.com/business/help/1492627900875762">docs</a> for more information.'
         ),
-        pattern_descriptor="The Ad Account ID must be a number.",
+        pattern_descriptor="The Ad Account IDaccount_ids must be a number.",
         examples=["111111111111111"],
         min_items=0,
+        default_factory=set,
     )
 
     account_id_lookup: Optional[LookupConfig] = Field(

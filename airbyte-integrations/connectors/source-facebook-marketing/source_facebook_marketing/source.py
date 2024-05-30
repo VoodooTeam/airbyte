@@ -91,9 +91,9 @@ class SourceFacebookMarketing(AbstractSource):
                     headers={
                         "Authorization":  f"Bearer {lookup.bearer_token}",
                         "Content-Type": "application/json",
-                        **lookup.headers
+                        **lookup.headers.dict()
                     },
-                    data=lookup.payload,
+                    data=lookup.payload.dict(),
                 )
             )
             res.raise_for_status()
