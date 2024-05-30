@@ -12,7 +12,7 @@ from facebook_business.adobjects.ad import Ad
 from facebook_business.adobjects.adset import AdSet
 from facebook_business.adobjects.adsinsights import AdsInsights
 from facebook_business.adobjects.campaign import Campaign
-from pydantic import BaseModel, Field, PositiveInt, constr, validator
+from pydantic import BaseModel, Field, PositiveInt, constr, validator, Extra
 
 logger = logging.getLogger("airbyte")
 
@@ -30,7 +30,7 @@ EMPTY_PATTERN = "^$"
 class LookupConfig(BaseModel):
 
     class Config:
-        use_enum_values = True
+        extra = Extra.allow
 
     url: str = Field(
         title="Endoint URL",
