@@ -47,10 +47,12 @@ class LookupConfig(BaseModel):
     )
     headers: dict[str, str] = Field(
         title="Additional HTTP headers",
+        description="HTTP headers to add to the request",
         default_factory=dict
     )
     payload: dict[str, str] = Field(
         title="HTTP payload",
+        description="Map of the json payload to submit to the endpoint",
         default_factory=dict,
     )
     path: str = Field(
