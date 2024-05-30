@@ -21,7 +21,7 @@ from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.utils import AirbyteTracedException
 from source_facebook_marketing.api import API
-from source_facebook_marketing.spec import ConnectorConfig
+from source_facebook_marketing.spec import ConnectorConfig, LookupConfig
 from source_facebook_marketing.streams import (
     Activities,
     AdAccounts,
@@ -82,7 +82,7 @@ class SourceFacebookMarketing(AbstractSource):
 
         config.account_ids = list(config.account_ids)
         if config.account_id_lookup:
-            lookup = config.account_id_lookup
+            lookup: LookupConfig = config.account_id_lookup
             res = (
                 requests
                 .request(
@@ -97,7 +97,7 @@ class SourceFacebookMarketing(AbstractSource):
                 )
             )
             res.raise_for_status()
-            config.account_ids = list(set(res.json()["items"]))
+            config.account_ids = list(set(res.json()[lookup.path]))
 
         return config
 
