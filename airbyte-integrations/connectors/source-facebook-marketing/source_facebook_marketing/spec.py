@@ -27,6 +27,11 @@ DATE_TIME_PATTERN = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
 EMPTY_PATTERN = "^$"
 
 
+class Arbitrary(BaseModel):
+    class Config:
+        extra = Extra.allow
+
+
 class LookupConfig(BaseModel):
 
     class Config:
@@ -45,12 +50,12 @@ class LookupConfig(BaseModel):
         description="Token to authenticate against the API",
         airbyte_secret=True,
     )
-    headers: dict[str, str] = Field(
+    headers: Arbitrary = Field(
         title="Additional HTTP headers",
         description="HTTP headers to add to the request",
         default_factory=dict
     )
-    payload: dict[str, str] = Field(
+    payload: Arbitrary = Field(
         title="HTTP payload",
         description="Map of the json payload to submit to the endpoint",
         default_factory=dict,
