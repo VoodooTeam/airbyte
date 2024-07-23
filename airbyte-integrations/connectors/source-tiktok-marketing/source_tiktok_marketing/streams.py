@@ -612,7 +612,7 @@ class Acos(FullRefreshTikTokSubStream):
         self.parent = AdGroups(MINIMUM_START_DATE, end_date, **kwargs)
 
     def is_valid_parent_slice(self, parent_slice):
-        return !parent_slice["is_smart_performance_campaign"] && parent_slice["creative_material_mode"] != 'CUSTOM'
+        return not parent_slice["is_smart_performance_campaign"] and parent_slice["creative_material_mode"] != 'CUSTOM'
 
     def path(self, stream_slice: Mapping[str, Any] = None, **kwargs) -> str:
         return "ad/aco/get/"
