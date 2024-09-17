@@ -5,11 +5,16 @@
 import json
 import logging
 from dataclasses import dataclass
+from http.client import RemoteDisconnected
 from time import sleep
+from typing import List
+
+import requests
 
 import backoff
 import pendulum
 from facebook_business import FacebookAdsApi
+from facebook_business.adobjects.user import User
 from facebook_business.adobjects.adaccount import AdAccount
 from facebook_business.api import FacebookResponse
 from facebook_business.exceptions import FacebookRequestError
@@ -22,7 +27,7 @@ class FacebookAPIException(Exception):
     """General class for all API errors"""
 
 
-backoff_policy = retry_pattern(backoff.expo, FacebookRequestError, max_tries=5, factor=5)
+backoff_policy = retry_pattern(backoff.expo, (FacebookRequestError, requests.ConnectionError, RemoteDisconnected), max_tries=15, factor=5)
 
 
 class MyFacebookAdsApi(FacebookAdsApi):
@@ -183,6 +188,9 @@ class API:
         # reference issue: https://github.com/airbytehq/airbyte/issues/25383
         setattr(self.api, "default_page_size", page_size)
         # set the default API client to Facebook lib.
+
+        adapter = requests.adapters.HTTPAdapter(max_retries=15, pool_connections=20, pool_maxsize=20, pool_block=False)
+        self.api._session.requests.mount('https://graph.facebook.com', adapter)
         FacebookAdsApi.set_default_api(self.api)
 
     def get_account(self, account_id: str) -> AdAccount:
@@ -195,4 +203,8 @@ class API:
     @staticmethod
     def _find_account(account_id: str) -> AdAccount:
         """Actual implementation of find account"""
-        return AdAccount(f"act_{account_id}").api_get()
+        return AdAccount(f"act_{account_id}")
+
+    @staticmethod
+    def get_visible_accounts() -> List[AdAccount]:
+        return list(User("me").get_ad_accounts())

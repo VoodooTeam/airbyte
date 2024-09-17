@@ -129,11 +129,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "segments.date": {
-      "description": "The date segment for the data.",
-      "type": ["null", "string"],
-      "format": "date"
     }
   }
 }

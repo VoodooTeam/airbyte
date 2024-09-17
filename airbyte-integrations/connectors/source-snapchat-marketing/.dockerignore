@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!main.py
+!source_snapchat_marketing
+!README.md
+!poetry.lock
+!pyproject.toml

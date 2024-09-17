@@ -4,7 +4,7 @@
 
 from .streams import (
     Activities,
-    AdAccount,
+    AdAccounts,
     AdCreatives,
     Ads,
     AdSets,
@@ -28,6 +28,7 @@ from .streams import (
     AdsInsightsDma,
     AdsInsightsPlatformAndDevice,
     AdsInsightsRegion,
+    AdRuleLibraries,
     Campaigns,
     CustomAudiences,
     CustomConversions,
@@ -36,7 +37,7 @@ from .streams import (
 )
 
 __all__ = [
-    "AdAccount",
+    "AdAccounts",
     "AdCreatives",
     "Ads",
     "AdSets",
@@ -60,6 +61,7 @@ __all__ = [
     "AdsInsightsDemographicsCountry",
     "AdsInsightsDemographicsDMARegion",
     "AdsInsightsDemographicsGender",
+    "AdRuleLibraries",
     "Campaigns",
     "CustomConversions",
     "CustomAudiences",

@@ -2,6 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "customer.id": {
+      "type": ["null", "string"]
+    },
     "campaign.accessible_bidding_strategy": {
       "description": "The accessible bidding strategy of the campaign.",
       "type": ["null", "string"]
@@ -312,110 +315,6 @@
     },
     "campaign.video_brand_safety_suitability": {
       "description": "The brand safety suitability settings for video ads within the campaign.",
-      "type": ["null", "string"]
-    },
-    "metrics.clicks": {
-      "description": "Total number of clicks in the campaign.",
-      "type": ["null", "integer"]
-    },
-    "metrics.ctr": {
-      "description": "Click-through rate (CTR) metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.conversions": {
-      "description": "Total number of conversions in the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.conversions_value": {
-      "description": "Total value of conversions in the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.cost_micros": {
-      "description": "Total cost in micros incurred for the campaign.",
-      "type": ["null", "integer"]
-    },
-    "metrics.impressions": {
-      "description": "Total number of impressions for the campaign.",
-      "type": ["null", "integer"]
-    },
-    "metrics.video_views": {
-      "description": "Total number of video views in the campaign.",
-      "type": ["null", "integer"]
-    },
-    "metrics.video_quartile_p100_rate": {
-      "description": "Rate of viewers reaching the 100% quartile in video ads.",
-      "type": ["null", "number"]
-    },
-    "metrics.active_view_cpm": {
-      "description": "Active View CPM metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.active_view_ctr": {
-      "description": "Active View CTR metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.active_view_impressions": {
-      "description": "Number of active view impressions for the campaign.",
-      "type": ["null", "integer"]
-    },
-    "metrics.active_view_measurability": {
-      "description": "Active view measurability metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.active_view_measurable_cost_micros": {
-      "description": "Cost in micros for measurable active view impressions.",
-      "type": ["null", "integer"]
-    },
-    "metrics.active_view_measurable_impressions": {
-      "description": "Number of measurable active view impressions.",
-      "type": ["null", "integer"]
-    },
-    "metrics.active_view_viewability": {
-      "description": "Active view viewability metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.average_cost": {
-      "description": "Average cost metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.average_cpc": {
-      "description": "Average CPC metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.average_cpm": {
-      "description": "Average CPM metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.interactions": {
-      "description": "Total number of interactions in the campaign.",
-      "type": ["null", "integer"]
-    },
-    "metrics.interaction_event_types": {
-      "description": "Types of interaction events recorded in the campaign metrics.",
-      "type": ["null", "array"],
-      "items": {
-        "type": ["null", "string"]
-      }
-    },
-    "metrics.value_per_conversion": {
-      "description": "Average value per conversion in the campaign.",
-      "type": ["null", "number"]
-    },
-    "metrics.cost_per_conversion": {
-      "description": "Cost per conversion metric for the campaign.",
-      "type": ["null", "number"]
-    },
-    "segments.date": {
-      "description": "Date segment used for campaign data.",
-      "type": ["null", "string"],
-      "format": "date"
-    },
-    "segments.hour": {
-      "description": "Hour segment used for campaign data.",
-      "type": ["null", "integer"]
-    },
-    "segments.ad_network_type": {
-      "description": "The type of ad network used for segmentation.",
       "type": ["null", "string"]
     }
   }

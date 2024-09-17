@@ -1,0 +1,23 @@
+documentationUrl: https://docsurl.com
+connectionSpecification:
+  $schema: http://json-schema.org/draft-07/schema#
+  title: Ironsource Spec
+  type: object
+  required:
+    - secret_key
+    - refresh_token
+  properties:
+    secret_key:
+      type: string
+      description: Secret key for Ironsource api
+      airbyte_secret: true
+    refresh_token:
+      type: string
+      description: Secret key for Ironsource api
+      airbyte_secret: true
+    page_size:
+      type: integer
+      description: Pagination size
+      default: 500
+      minimum: 1
+      maximum: 3000

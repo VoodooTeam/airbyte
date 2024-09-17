@@ -72,6 +72,9 @@
       "description": "The ID of the campaign.",
       "type": ["null", "string"]
     },
+    "is_skadnetwork_attribution": {
+      "type": ["null", "boolean"]
+    },
     "issues_info": {
       "description": "Information on any issues related to the campaigns.",
       "type": ["null", "array"],

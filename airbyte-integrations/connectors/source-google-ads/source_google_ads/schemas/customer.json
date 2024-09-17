@@ -85,11 +85,6 @@
     "customer.tracking_url_template": {
       "description": "The tracking URL template for the customer",
       "type": ["null", "string"]
-    },
-    "segments.date": {
-      "description": "The date segment format",
-      "type": ["null", "string"],
-      "format": "date"
     }
   }
 }

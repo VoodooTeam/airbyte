@@ -7,6 +7,7 @@ from typing import Any, List, Mapping, Optional, Tuple, Type
 
 import facebook_business
 import pendulum
+import requests
 from airbyte_cdk.models import (
     AdvancedAuth,
     AuthFlowType,
@@ -15,14 +16,15 @@ from airbyte_cdk.models import (
     FailureType,
     OAuthConfigSpecification,
 )
+from airbyte_cdk.sources.utils.slice_logger import SliceLogger, AlwaysLogSliceLogger
 from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.utils import AirbyteTracedException
 from source_facebook_marketing.api import API
-from source_facebook_marketing.spec import ConnectorConfig, ValidAdStatuses
+from source_facebook_marketing.spec import ConnectorConfig, LookupConfig, MultipleActSources, ValidAdStatuses
 from source_facebook_marketing.streams import (
     Activities,
-    AdAccount,
+    AdAccounts,
     AdCreatives,
     Ads,
     AdSets,
@@ -46,6 +48,7 @@ from source_facebook_marketing.streams import (
     AdsInsightsDma,
     AdsInsightsPlatformAndDevice,
     AdsInsightsRegion,
+    AdRuleLibraries,
     Campaigns,
     CustomAudiences,
     CustomConversions,
@@ -59,16 +62,44 @@ logger = logging.getLogger("airbyte")
 UNSUPPORTED_FIELDS = {"unique_conversions", "unique_ctr", "unique_clicks"}
 
 
+class AccountLookupFailed(Exception):
+    pass
+
+
+def fetch(lookup: LookupConfig):
+    try:
+        res = (
+            requests
+            .request(
+                method=lookup.method,
+                url=lookup.url,
+                headers={
+                    "Authorization": f"Bearer {lookup.bearer_token}",
+                    **lookup.headers.dict()
+                },
+                json=lookup.payload.dict(),
+            )
+        )
+    except requests.exceptions.RequestException as err:
+        raise AccountLookupFailed() from err
+    try:
+        res.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        raise AccountLookupFailed(res.text) from err
+    return list(set(res.json()[lookup.path]))
+
+
 class SourceFacebookMarketing(AbstractSource):
     # Skip exceptions on missing streams
     raise_exception_on_missing_stream = False
+    _slice_logger: SliceLogger = AlwaysLogSliceLogger()
 
     def _validate_and_transform(self, config: Mapping[str, Any]):
         config.setdefault("action_breakdowns_allow_empty", False)
         if config.get("end_date") == "":
             config.pop("end_date")
 
-        config = ConnectorConfig.parse_obj(config)
+        config: ConnectorConfig = ConnectorConfig.parse_obj(config)
 
         if config.start_date:
             config.start_date = pendulum.instance(config.start_date)
@@ -77,6 +108,8 @@ class SourceFacebookMarketing(AbstractSource):
             config.end_date = pendulum.instance(config.end_date)
 
         config.account_ids = list(config.account_ids)
+        if config.account_id_lookup:
+            config.account_ids = fetch(config.account_id_lookup)
 
         return config
 
@@ -110,6 +143,12 @@ class SourceFacebookMarketing(AbstractSource):
                 for stream in self.get_custom_insights_streams(api, config):
                     stream.check_breakdowns(account_id=account_id)
 
+        except MultipleActSources as e:
+            return False, *e.args
+
+        except AccountLookupFailed as e:
+            return False, "Ad Accounts ID lookup error: " + " ".join(str(a) for a in (e.args + e.__cause__.args))
+
         except facebook_business.exceptions.FacebookRequestError as e:
             return False, e._api_error_message
 
@@ -137,6 +176,9 @@ class SourceFacebookMarketing(AbstractSource):
         else:
             api = API(access_token=config.access_token, page_size=config.page_size)
 
+        # Default to all visible accounts if account list is empty
+        config.account_ids = config.account_ids or [act.get_id().lstrip("act_") for act in api.get_visible_accounts()]
+
         # if start_date not specified then set default start_date for report streams to 2 years ago
         report_start_date = config.start_date or pendulum.now().add(years=-2)
 
@@ -147,10 +189,15 @@ class SourceFacebookMarketing(AbstractSource):
             end_date=config.end_date,
             insights_lookback_window=config.insights_lookback_window,
             insights_job_timeout=config.insights_job_timeout,
-            filter_statuses=[status.value for status in [*ValidAdStatuses]],
+            parallelism=config.parallelism,
+            filter_statuses=[status.value for status in [*ValidAdStatuses]]
         )
         streams = [
-            AdAccount(api=api, account_ids=config.account_ids),
+            AdAccounts(
+                api=api,
+                account_ids=config.account_ids,
+                parallelism=config.parallelism
+            ),
             AdSets(
                 api=api,
                 account_ids=config.account_ids,
@@ -158,6 +205,7 @@ class SourceFacebookMarketing(AbstractSource):
                 end_date=config.end_date,
                 filter_statuses=config.adset_statuses,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             Ads(
                 api=api,
@@ -166,12 +214,14 @@ class SourceFacebookMarketing(AbstractSource):
                 end_date=config.end_date,
                 filter_statuses=config.ad_statuses,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             AdCreatives(
                 api=api,
                 account_ids=config.account_ids,
                 fetch_thumbnail_images=config.fetch_thumbnail_images,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             AdsInsights(page_size=config.page_size, **insights_args),
             AdsInsightsAgeAndGender(page_size=config.page_size, **insights_args),
@@ -193,6 +243,15 @@ class SourceFacebookMarketing(AbstractSource):
             AdsInsightsDemographicsCountry(page_size=config.page_size, **insights_args),
             AdsInsightsDemographicsDMARegion(page_size=config.page_size, **insights_args),
             AdsInsightsDemographicsGender(page_size=config.page_size, **insights_args),
+            AdRuleLibraries(
+                api=api,
+                account_ids=config.account_ids,
+                start_date=config.start_date,
+                end_date=config.end_date,
+                filter_statuses=config.adset_statuses,
+                page_size=config.page_size,
+                parallelism=config.parallelism
+            ),
             Campaigns(
                 api=api,
                 account_ids=config.account_ids,
@@ -200,16 +259,19 @@ class SourceFacebookMarketing(AbstractSource):
                 end_date=config.end_date,
                 filter_statuses=config.campaign_statuses,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             CustomConversions(
                 api=api,
                 account_ids=config.account_ids,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             CustomAudiences(
                 api=api,
                 account_ids=config.account_ids,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             Images(
                 api=api,
@@ -217,6 +279,7 @@ class SourceFacebookMarketing(AbstractSource):
                 start_date=config.start_date,
                 end_date=config.end_date,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             Videos(
                 api=api,
@@ -224,6 +287,7 @@ class SourceFacebookMarketing(AbstractSource):
                 start_date=config.start_date,
                 end_date=config.end_date,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
             Activities(
                 api=api,
@@ -231,6 +295,7 @@ class SourceFacebookMarketing(AbstractSource):
                 start_date=config.start_date,
                 end_date=config.end_date,
                 page_size=config.page_size,
+                parallelism=config.parallelism
             ),
         ]
 
@@ -316,6 +381,7 @@ class SourceFacebookMarketing(AbstractSource):
                 insights_lookback_window=insight.insights_lookback_window or config.insights_lookback_window,
                 insights_job_timeout=insight.insights_job_timeout or config.insights_job_timeout,
                 level=insight.level,
+                parallelism=config.parallelism
             )
             streams.append(stream)
         return streams

@@ -12,7 +12,7 @@ from facebook_business.adobjects.ad import Ad
 from facebook_business.adobjects.adset import AdSet
 from facebook_business.adobjects.adsinsights import AdsInsights
 from facebook_business.adobjects.campaign import Campaign
-from pydantic.v1 import BaseModel, Field, PositiveInt, constr
+from pydantic import BaseModel, Field, PositiveInt, constr, root_validator, Extra # TODO: add .v1 to pydantic
 
 logger = logging.getLogger("airbyte")
 
@@ -30,6 +30,42 @@ ValidAdSetStatuses = Enum("ValidAdSetStatuses", AdSet.EffectiveStatus.__dict__)
 ValidAdStatuses = Enum("ValidAdStatuses", Ad.EffectiveStatus.__dict__)
 DATE_TIME_PATTERN = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
 EMPTY_PATTERN = "^$"
+
+
+class Arbitrary(BaseModel):
+    class Config:
+        extra = Extra.allow
+
+
+class LookupConfig(BaseModel):
+
+    url: str = Field(
+        title="Endoint URL",
+        description="The URL to fetch the list",
+    )
+    method: str = Field(
+        title="HTTP method to use",
+        description="e.g. GET, POST, PUT, DELETE, HEAD, OPTIONS, TRACE",
+    )
+    bearer_token: str = Field(
+        title="Bearer token",
+        description="Token to authenticate against the API",
+        airbyte_secret=True,
+    )
+    headers: Arbitrary = Field(
+        title="Additional HTTP headers",
+        description="HTTP headers to add to the request",
+        default_factory=dict
+    )
+    payload: Arbitrary = Field(
+        title="HTTP payload",
+        description="Map of the json payload to submit to the endpoint",
+        default_factory=dict,
+    )
+    path: str = Field(
+        title="Path",
+        description="Path to extract the relevant list from the response JSON",
+    )
 
 
 class OAuthCredentials(BaseModel):
@@ -166,8 +202,20 @@ class InsightConfig(BaseModel):
     )
 
 
+class MultipleActSources(Exception):
+    """Both explicit accounts list and lookup endpoint specified in the config."""
+
+
 class ConnectorConfig(BaseConfig):
     """Connector config"""
+
+    @root_validator
+    def exactly_one_accounts_source(cls, values):
+        is_static = len(values["account_ids"]) > 0
+        is_dynamic = values["account_id_lookup"] is not None
+        if is_static and is_dynamic:
+            raise MultipleActSources("Only one of Ad Account ID(s) or Account IDs lookup config can be set")
+        return values
 
     class Config:
         title = "Source Facebook Marketing"
@@ -184,12 +232,21 @@ class ConnectorConfig(BaseConfig):
         ),
         pattern_descriptor="The Ad Account ID must be a number.",
         examples=["111111111111111"],
-        min_items=1,
+        min_items=0,
+        default_factory=set,
+    )
+
+    account_id_lookup: Optional[LookupConfig] = Field(
+        title="Account IDs lookup config",
+        order=1,
+        description=(
+            "Endpoint to query for the list of Ad Account IDs."
+        )
     )
 
     access_token: Optional[str] = Field(
         title="Access Token",
-        order=1,
+        order=2,
         description=(
             "The value of the generated access token. "
             'From your App’s Dashboard, click on "Marketing API" then "Tools". '
@@ -199,16 +256,15 @@ class ConnectorConfig(BaseConfig):
         airbyte_secret=True,
     )
 
-    credentials: Optional[Union[OAuthCredentials, ServiceAccountCredentials]] = Field(
+    credentials: Union[OAuthCredentials, ServiceAccountCredentials] = Field(
         title="Authentication",
         description="Credentials for connecting to the Facebook Marketing API",
-        discriminator="auth_type",
         type="object",
     )
 
     start_date: Optional[datetime] = Field(
         title="Start Date",
-        order=2,
+        order=3,
         description=(
             "The date from which you'd like to replicate data for all incremental streams, "
             "in the format YYYY-MM-DDT00:00:00Z. If not set then all data will be replicated for usual streams and only last 2 years for insight streams."
@@ -219,7 +275,7 @@ class ConnectorConfig(BaseConfig):
 
     end_date: Optional[datetime] = Field(
         title="End Date",
-        order=3,
+        order=4,
         description=(
             "The date until which you'd like to replicate data for all incremental streams, in the format YYYY-MM-DDT00:00:00Z."
             " All data generated between the start date and this end date will be replicated. "
@@ -232,35 +288,35 @@ class ConnectorConfig(BaseConfig):
 
     campaign_statuses: Optional[List[ValidCampaignStatuses]] = Field(
         title="Campaign Statuses",
-        order=4,
+        order=5,
         description="Select the statuses you want to be loaded in the stream. If no specific statuses are selected, the API's default behavior applies, and some statuses may be filtered out.",
         default=[],
     )
 
     adset_statuses: Optional[List[ValidAdSetStatuses]] = Field(
         title="AdSet Statuses",
-        order=5,
+        order=6,
         description="Select the statuses you want to be loaded in the stream. If no specific statuses are selected, the API's default behavior applies, and some statuses may be filtered out.",
         default=[],
     )
 
     ad_statuses: Optional[List[ValidAdStatuses]] = Field(
         title="Ad Statuses",
-        order=6,
+        order=7,
         description="Select the statuses you want to be loaded in the stream. If no specific statuses are selected, the API's default behavior applies, and some statuses may be filtered out.",
         default=[],
     )
 
     fetch_thumbnail_images: bool = Field(
         title="Fetch Thumbnail Images from Ad Creative",
-        order=7,
+        order=8,
         default=False,
         description="Set to active if you want to fetch the thumbnail_url and store the result in thumbnail_data_url for each Ad Creative.",
     )
 
     custom_insights: Optional[List[InsightConfig]] = Field(
         title="Custom Insights",
-        order=8,
+        order=9,
         description=(
             "A list which contains ad statistics entries, each entry must have a name and can contains fields, "
             'breakdowns or action_breakdowns. Click on "add" to fill this field.'
@@ -277,9 +333,20 @@ class ConnectorConfig(BaseConfig):
         ),
     )
 
+    parallelism: Optional[PositiveInt] = Field(
+        title="Maximum number of parallel connections",
+        order=11,
+        description=(
+            "Maximum number of parallel connections."
+            "Most users do not need to set this field unless they specifically need to tune the connector to address "
+            "specific issues or use cases."
+        ),
+        default=1,
+    )
+
     insights_lookback_window: Optional[PositiveInt] = Field(
         title="Insights Lookback Window",
-        order=11,
+        order=12,
         description=(
             "The attribution window. Facebook freezes insight data 28 days after it was generated, "
             "which means that all data from the past 28 days may have changed since we last emitted it, "
@@ -293,7 +360,7 @@ class ConnectorConfig(BaseConfig):
 
     insights_job_timeout: Optional[PositiveInt] = Field(
         title="Insights Job Timeout",
-        order=12,
+        order=13,
         description=(
             "Insights Job Timeout establishes the maximum amount of time (in minutes) of waiting for the report job to complete. "
             "When timeout is reached the job is considered failed and we are trying to request smaller amount of data by breaking the job to few smaller ones. "

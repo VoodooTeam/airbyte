@@ -19,6 +19,7 @@ from .streams import (
     AccountPerformanceReport,
     AdGroup,
     AdGroupAd,
+    AdGroupAdAssetView,
     AdGroupAdLabel,
     AdGroupAdLegacy,
     AdGroupBiddingStrategy,
@@ -53,7 +54,7 @@ class SourceGoogleAds(AbstractSource):
     raise_exception_on_missing_stream = False
 
     @staticmethod
-    def _validate_and_transform(config: Mapping[str, Any]):
+    def _validate_and_transform(config: dict[str, Any]):
         if config.get("end_date") == "":
             config.pop("end_date")
         for query in config.get("custom_queries_array", []):
@@ -69,6 +70,9 @@ class SourceGoogleAds(AbstractSource):
         if "customer_id" in config:
             config["customer_ids"] = config["customer_id"].split(",")
             config.pop("customer_id")
+        if "exclude_customer_id" in config:
+            config["exclude_customer_ids"] = set(config["exclude_customer_id"].split(","))
+            config.pop("exclude_customer_id")
 
         return config
 
@@ -121,8 +125,9 @@ class SourceGoogleAds(AbstractSource):
         # filter duplicates as one customer can be accessible from mutiple connected accounts
         unique_customers = []
         seen_ids = set()
+        excluded_ids = config.get("exclude_customer_ids", set())
         for customer in customers:
-            if customer.id in seen_ids:
+            if customer.id in seen_ids or customer.id in excluded_ids:
                 continue
             seen_ids.add(customer.id)
             unique_customers.append(customer)
@@ -225,6 +230,8 @@ class SourceGoogleAds(AbstractSource):
                         customer_id=customer.id,
                         login_customer_id=customer.login_customer_id,
                     )
+                except AirbyteTracedException as e:
+                    raise e from e
                 except Exception as exc:
                     traced_exception(exc, customer.id, False, table_name)
                 # iterate over the response otherwise exceptions will not be raised!
@@ -245,8 +252,9 @@ class SourceGoogleAds(AbstractSource):
         incremental_config = self.get_incremental_stream_config(google_api, config, customers)
         non_manager_incremental_config = self.get_incremental_stream_config(google_api, config, non_manager_accounts)
         streams = [
-            AdGroup(**incremental_config),
-            AdGroupAd(**incremental_config),
+            AdGroup(**default_config),
+            AdGroupAd(**default_config),
+            AdGroupAdAssetView(**incremental_config),
             AdGroupAdLabel(**default_config),
             AdGroupBiddingStrategy(**incremental_config),
             AdGroupCriterion(**default_config),
@@ -258,7 +266,7 @@ class SourceGoogleAds(AbstractSource):
             CampaignCriterion(**default_config),
             CampaignLabel(google_api, customers=customers),
             ClickView(**incremental_config),
-            Customer(**incremental_config),
+            Customer(**default_config),
             CustomerLabel(**default_config),
             Label(**default_config),
             UserInterest(**default_config),
@@ -267,8 +275,8 @@ class SourceGoogleAds(AbstractSource):
         if non_manager_accounts:
             streams.extend(
                 [
-                    Campaign(**non_manager_incremental_config),
-                    CampaignBudget(**non_manager_incremental_config),
+                    Campaign(**default_config),
+                    CampaignBudget(**default_config),
                     UserLocationView(**non_manager_incremental_config),
                     AccountPerformanceReport(**non_manager_incremental_config),
                     TopicView(**non_manager_incremental_config),

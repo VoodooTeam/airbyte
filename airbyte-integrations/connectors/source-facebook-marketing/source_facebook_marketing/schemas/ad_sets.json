@@ -161,6 +161,9 @@
           }
         }
       }
+    },
+    "optimization_goal": {
+      "type": ["null", "string"]
     }
   }
 }

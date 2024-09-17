@@ -3,6 +3,7 @@
 #
 
 import logging
+from functools import cache
 from typing import Any, Iterable, Iterator, List, Mapping, MutableMapping, Optional, Union
 
 import airbyte_cdk.sources.utils.casing as casing
@@ -156,27 +157,28 @@ class AdsInsights(FBMarketingIncrementalStream):
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
         """Waits for current job to finish (slice) and yield its result"""
-        job = stream_slice["insight_job"]
+        manager = stream_slice["insight_job_manager"]
         account_id = stream_slice["account_id"]
 
-        try:
-            for obj in job.get_result():
-                data = obj.export_all_data()
-                if self._response_data_is_valid(data):
-                    self._add_account_id(data, account_id)
-                    yield self._transform_breakdown(data)
-        except FacebookBadObjectError as e:
-            raise AirbyteTracedException(
-                message=f"API error occurs on Facebook side during job: {job}, wrong (empty) response received with errors: {e} "
-                f"Please try again later",
-                failure_type=FailureType.system_error,
-            ) from e
-        except FacebookRequestError as exc:
-            raise traced_exception(exc)
+        for job in manager.completed_jobs():
+            try:
+                for obj in job.get_result():
+                    data = obj.export_all_data()
+                    if self._response_data_is_valid(data):
+                        self._add_account_id(data, account_id)
+                        yield data
+            except FacebookBadObjectError as e:
+                raise AirbyteTracedException(
+                    message=f"API error occurs on Facebook side during job: {job}, wrong (empty) response received with errors: {e} "
+                    f"Please try again later",
+                    failure_type=FailureType.system_error,
+                ) from e
+            except FacebookRequestError as exc:
+                raise traced_exception(exc)
 
-        self._completed_slices[account_id].add(job.interval.start)
-        if job.interval.start == self._next_cursor_values[account_id]:
-            self._advance_cursor(account_id)
+            self._completed_slices[account_id].add(job.interval.start)
+            if job.interval.start == self._next_cursor_values[account_id]:
+                self._advance_cursor(account_id)
 
     @property
     def state(self) -> MutableMapping[str, Any]:
@@ -250,7 +252,7 @@ class AdsInsights(FBMarketingIncrementalStream):
         :param params:
         :return:
         """
-
+        jobs = []
         self._next_cursor_values = self._get_start_date()
         for ts_start in self._date_intervals(account_id):
             if (
@@ -260,13 +262,14 @@ class AdsInsights(FBMarketingIncrementalStream):
                 continue
             ts_end = ts_start + pendulum.duration(days=self.time_increment - 1)
             interval = pendulum.Period(ts_start, ts_end)
-            yield InsightAsyncJob(
+            jobs.append(InsightAsyncJob(
                 api=self._api.api,
                 edge_object=self._api.get_account(account_id=account_id),
                 interval=interval,
                 params=params,
                 job_timeout=self.insights_job_timeout,
-            )
+            ))
+        return jobs
 
     def check_breakdowns(self, account_id: str):
         """
@@ -307,6 +310,7 @@ class AdsInsights(FBMarketingIncrementalStream):
         if stream_state:
             self.state = stream_state
 
+        slices = []
         for account_id in self._account_ids:
             try:
                 manager = InsightAsyncJobManager(
@@ -314,10 +318,10 @@ class AdsInsights(FBMarketingIncrementalStream):
                     jobs=self._generate_async_jobs(params=self.request_params(), account_id=account_id),
                     account_id=account_id,
                 )
-                for job in manager.completed_jobs():
-                    yield {"insight_job": job, "account_id": account_id}
+                slices.append({"insight_job_manager": manager, "account_id": account_id})
             except FacebookRequestError as exc:
                 raise traced_exception(exc)
+        return slices
 
     def _get_start_date(self) -> Mapping[str, pendulum.Date]:
         """Get start date to begin sync with. It is not that trivial as it might seem.
@@ -395,21 +399,31 @@ class AdsInsights(FBMarketingIncrementalStream):
                     schema["properties"].update({object_breakdown_id: breakdowns_properties[object_breakdown_id]})
         return schema
 
+    @cache
     def fields(self, **kwargs) -> List[str]:
-        """List of fields that we want to query, for now just all properties from stream's schema"""
+        """
+        List of fields that we want to query, if no json_schema from configured catalog then will get all properties from stream's schema
+        """
         if self._custom_fields:
             return self._custom_fields
 
         if self._fields:
             return self._fields
-
-        schema = ResourceSchemaLoader(package_name_from_class(self.__class__)).get_schema("ads_insights")
+        schema = (
+            self.configured_json_schema
+            if self.configured_json_schema and self.configured_json_schema.get("properties")
+            else ResourceSchemaLoader(package_name_from_class(self.__class__)).get_schema("ads_insights")
+        )
         self._fields = list(schema.get("properties", {}).keys())
 
+        # Check that no breakdowns are injected from configured catalog schema (review "get_json_schema" doc).
+        removable_keys = list(self.breakdowns if self.breakdowns else [])
         # Having this field in syncs seem to have caused data inaccuracy where fields like `spend` had the wrong values
-        try:
-            self._fields.remove("wish_bid")
-        except ValueError:
-            pass
+        removable_keys.append("wish_bid")
+        for removable_key in removable_keys:
+            try:
+                self._fields.remove(removable_key)
+            except ValueError:
+                pass
 
         return self._fields

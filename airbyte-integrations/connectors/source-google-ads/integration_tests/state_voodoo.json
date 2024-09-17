@@ -1,0 +1,17 @@
+[
+  {
+    "type": "STREAM",
+    "stream": {
+      "stream_descriptor": {
+        "name": "ad_group_ad_asset_view"
+      },
+      "stream_state": {
+        "change_status": {
+          "2302197676": {
+            "change_status.last_change_date_time": "2024-07-07 13:20:01.003295"
+          }
+        }
+      }
+    }
+  }
+]

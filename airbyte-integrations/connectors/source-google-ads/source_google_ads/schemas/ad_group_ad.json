@@ -658,11 +658,6 @@
     "ad_group_ad.status": {
       "description": "The status of the ad group ad.",
       "type": ["null", "string"]
-    },
-    "segments.date": {
-      "description": "The date segment for the ad group ad data.",
-      "type": ["null", "string"],
-      "format": "date"
     }
   }
 }

@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": ["string", "null"]
+    },
+    "campaign_id": {
+      "type": ["integer", "null"]
+    },
+    "offer_id": {
+      "type": ["integer", "null"]
+    },
+    "offer_uuid": {
+      "type": ["string", "null"]
+    },
+    "offer_name": {
+      "type": ["string", "null"]
+    },
+    "creative_id": {
+      "type": ["integer", "null"]
+    },
+    "creative_name": {
+      "type": ["string", "null"]
+    },
+    "currency": {
+      "type": ["string", "null"]
+    },
+    "impression": {
+      "type": ["integer", "null"]
+    },
+    "click": {
+      "type": ["integer", "null"]
+    },
+    "conversion": {
+      "type": ["integer", "null"]
+    },
+    "ecpm": {
+      "type": ["number", "null"]
+    },
+    "cpc": {
+      "type": ["number", "null"]
+    },
+    "ctr": {
+      "type": ["number", "null"]
+    },
+    "cvr": {
+      "type": ["number", "null"]
+    },
+    "ivr": {
+      "type": ["number", "null"]
+    },
+    "spend": {
+      "type": ["number", "null"]
+    }
+  }
+}
