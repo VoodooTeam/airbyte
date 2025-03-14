@@ -12,5 +12,5 @@ from source_google_ads.config_migrations import MigrateCustomQuery
 
 def run():
     source = SourceGoogleAds()
-    MigrateCustomQuery.migrate(sys.argv[1:], source)
+    # MigrateCustomQuery.migrate(sys.argv[1:], source)
     launch(source, sys.argv[1:])
