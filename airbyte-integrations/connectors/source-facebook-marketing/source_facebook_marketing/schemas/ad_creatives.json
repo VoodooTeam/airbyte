@@ -651,8 +651,8 @@
       "description": "Cropped versions of the main image used in the ad creative.",
       "$ref": "ads_image_crops.json"
     },
-    "instagram_actor_id": {
-      "description": "Instagram actor ID associated with the ad creative.",
+    "instagram_user_id": {
+      "description": "Instagram user ID associated with the ad creative.",
       "type": ["null", "string"]
     },
     "instagram_permalink_url": {
@@ -677,7 +677,7 @@
         "page_id": {
           "type": ["null", "string"]
         },
-        "instagram_actor_id": {
+        "instagram_user_id": {
           "type": ["null", "string"]
         },
         "link_data": {
