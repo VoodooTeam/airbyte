@@ -16,7 +16,7 @@
             "type" : "object",
             "properties" : {
               "image_info" : {
-                "type" : "array",
+                "type" : ["array", "null"],
                 "items" : {
                   "type" : "object",
                   "properties" : {
@@ -30,7 +30,7 @@
                 }
               },
               "video_info" : {
-                "type" : "object",
+                "type" : ["object", "null"],
                 "properties" : {
                   "file_name" : {
                     "type" : "string"

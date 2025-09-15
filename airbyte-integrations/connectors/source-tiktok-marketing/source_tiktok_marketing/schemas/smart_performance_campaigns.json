@@ -156,7 +156,7 @@
             "type": "object",
             "properties": {
               "video_info": {
-                "type": "object",
+                "type": ["object", "null"],
                 "properties": {
                   "video_id": {
                     "type":["string", "null"]
@@ -170,7 +170,7 @@
                 "type": ["string", "null"]
               },
               "image_info": {
-                "type": "array",
+                "type": ["array", "null"],
                 "items": {
                   "type": "object",
                   "properties": {

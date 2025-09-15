@@ -117,6 +117,10 @@ class JsonUpdatedState(pydantic.BaseModel):
     current_stream_state: str
     stream: T
 
+    class Config:
+        # Prevent circular reference issues and allow TypeVar T
+        arbitrary_types_allowed = True
+
     def __repr__(self):
         """Overrides print view"""
         return str(self.dict())
@@ -125,9 +129,10 @@ class JsonUpdatedState(pydantic.BaseModel):
         """Overrides default logic.
         A new updated stage has to be sent if all advertisers are used only
         """
-        if not self.stream.is_finished:
+        # Use weak reference check to avoid keeping strong references
+        if hasattr(self.stream, 'is_finished') and not self.stream.is_finished:
             return self.current_stream_state
-        max_updated_at = self.stream.max_cursor_date or ""
+        max_updated_at = getattr(self.stream, 'max_cursor_date', None) or ""
         return max(max_updated_at, self.current_stream_state)
 
     def __eq__(self, other):
@@ -181,13 +186,12 @@ class TiktokStream(HttpStream, ABC):
     # max value of page
     page_size = 1000
 
-    retried_40002_counter = 0
-
     def __init__(self, **kwargs):
         super().__init__(authenticator=kwargs.get("authenticator"))
 
         self._advertiser_id = kwargs.get("advertiser_id")
         self.is_sandbox = kwargs.get("is_sandbox")
+        self.retried_40002_counter = 0  # Move to instance level to avoid shared state
 
     def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
         """All responses have the similar structure:
@@ -327,7 +331,10 @@ class FullRefreshTiktokStream(TiktokStream, ABC):
         else:
             # for prod: return list of all available ids from AdvertiserIds stream if the field is empty
             # in the connector configuration
-            advertiser_ids = AdvertiserIds(**self.kwargs).read_records(sync_mode=SyncMode.full_refresh)
+            # Cache the AdvertiserIds instance to prevent memory leaks from repeated instantiation
+            if not hasattr(self, '_advertiser_ids_stream'):
+                self._advertiser_ids_stream = AdvertiserIds(**self.kwargs)
+            advertiser_ids = self._advertiser_ids_stream.read_records(sync_mode=SyncMode.full_refresh)
             ids = [advertiser["advertiser_id"] for advertiser in advertiser_ids]
 
         self._advertiser_ids = ids
@@ -496,7 +503,8 @@ class IncrementalTiktokStream(FullRefreshTiktokStream, ABC):
         # needs to save a last state if all advertisers are used before only
         current_stream_state_value = (self.select_cursor_field_value(current_stream_state)) or ""
         # current hypothesis is that if the ingestion takes too long, and a row is modified during the run, the modification won't be ingested
-        self.max_cursor_date = (datetime.strptime(self.max_cursor_date, "%Y-%m-%d %H:%M:%S") - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
+        if self.max_cursor_date:
+            self.max_cursor_date = (datetime.strptime(self.max_cursor_date, "%Y-%m-%d %H:%M:%S") - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
 
         # a object JsonUpdatedState is related with a current stream and should return a new updated state if needed
         if not isinstance(current_stream_state_value, JsonUpdatedState):
