@@ -437,8 +437,11 @@ class FullRefreshTikTokSubStream(HttpSubStream, FullRefreshTiktokStream):
                                          in parent_stream_slices if self.is_valid_parent_slice(parent_slice)]
         for key, group in groupby(filtered_parent_stream_slices, key=lambda x: x['advertiser_id']):
             current_c_ids = [item[self.parent_id_field] for item in group]
-            # Only yield results if there are IDs to fetch data on
+            # Only log and yield results if there are IDs to fetch data on
             if current_c_ids:
+                self.logger.info(
+                    f'{self.name}: Processing advertiser_id={key} with {len(current_c_ids)} parent {self.parent_id_field}(s)'
+                )
                 for i in range(0, len(current_c_ids), self.BATCH_SIZE):
                     yield {'advertiser_id': key, 'group_ids': current_c_ids[i:i + self.BATCH_SIZE]}
 
