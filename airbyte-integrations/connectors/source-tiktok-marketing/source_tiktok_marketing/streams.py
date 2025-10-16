@@ -250,7 +250,7 @@ class TiktokStream(HttpStream, ABC):
             self.logger.error(f"Incorrect JSON response: {response.text}")
             raise
         if data["code"] in (40100, 50002, 51002):
-            self.logger.warning(f"Caught {data["code"]}: {data}, {response.url}")
+            self.logger.warning(f"Caught error code: {data}, {response.url}")
             return True
         if data["code"] == 40002 and self.retried_40002_counter < 10:
             self.logger.warning(f"Caught 40002: {data}, {response.url}, {self.retried_40002_counter}")
