@@ -250,6 +250,7 @@ class TiktokStream(HttpStream, ABC):
             self.logger.error(f"Incorrect JSON response: {response.text}")
             raise
         if data["code"] in (40100, 50002, 51002):
+            self.logger.warning(f"Caught {data["code"]}: {data}, {response.url}")
             return True
         if data["code"] == 40002 and self.retried_40002_counter < 10:
             self.logger.warning(f"Caught 40002: {data}, {response.url}, {self.retried_40002_counter}")
@@ -398,7 +399,7 @@ class FullRefreshTiktokStream(TiktokStream, ABC):
 class FullRefreshTikTokSubStream(HttpSubStream, FullRefreshTiktokStream):
 
     parent_id_field = None
-    BATCH_SIZE = 100
+    BATCH_SIZE = 50
 
     def __init__(self, start_date: str, end_date: str, **kwargs):
         FullRefreshTiktokStream.__init__(self, start_date, end_date, **kwargs)
@@ -609,7 +610,13 @@ class SmartPerformanceCampaigns(FullRefreshTikTokSubStream):
         self.parent = Campaigns(MINIMUM_START_DATE, end_date, **kwargs)
 
     def is_valid_parent_slice(self, parent_slice):
-        return parent_slice["is_smart_performance_campaign"]
+        if not parent_slice["is_smart_performance_campaign"]:
+            return False
+
+        # Check if modify_time is within the last 7 days
+        modify_datetime = datetime.strptime(parent_slice["modify_time"], "%Y-%m-%d %H:%M:%S")
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        return modify_datetime >= seven_days_ago
 
     def path(self, stream_slice: Mapping[str, Any] = None, **kwargs) -> str:
         return "campaign/spc/get/"
@@ -625,7 +632,13 @@ class Acos(FullRefreshTikTokSubStream):
         self.parent = AdGroups(MINIMUM_START_DATE, end_date, **kwargs)
 
     def is_valid_parent_slice(self, parent_slice):
-        return not parent_slice["is_smart_performance_campaign"] and parent_slice["creative_material_mode"] != 'CUSTOM'
+        if parent_slice["is_smart_performance_campaign"] or parent_slice["creative_material_mode"] == 'CUSTOM':
+            return False
+
+        # Check if modify_time is within the last 7 days
+        modify_datetime = datetime.strptime(parent_slice["modify_time"], "%Y-%m-%d %H:%M:%S")
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        return modify_datetime >= seven_days_ago
 
     def path(self, stream_slice: Mapping[str, Any] = None, **kwargs) -> str:
         return "ad/aco/get/"
