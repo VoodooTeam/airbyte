@@ -613,6 +613,7 @@ class SmartPerformanceCampaigns(FullRefreshTikTokSubStream):
         if not parent_slice["is_smart_performance_campaign"]:
             return False
 
+        return True
         # Check if modify_time is within the last 7 days
         modify_datetime = datetime.strptime(parent_slice["modify_time"], "%Y-%m-%d %H:%M:%S")
         seven_days_ago = datetime.now() - timedelta(days=7)
@@ -635,6 +636,7 @@ class Acos(FullRefreshTikTokSubStream):
         if parent_slice["is_smart_performance_campaign"] or parent_slice["creative_material_mode"] == 'CUSTOM':
             return False
 
+        return True
         # Check if modify_time is within the last 7 days
         modify_datetime = datetime.strptime(parent_slice["modify_time"], "%Y-%m-%d %H:%M:%S")
         seven_days_ago = datetime.now() - timedelta(days=7)
